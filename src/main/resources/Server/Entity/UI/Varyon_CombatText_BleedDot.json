@@ -1,0 +1,15 @@
+{
+  "Type": "CombatText",
+  "HitboxOffset": { "X": 0, "Y": -110 },
+  "RandomPositionOffsetRange": { "X": { "Min": 15, "Max": 50 }, "Y": { "Min": 8, "Max": 25 } },
+  "ViewportMargin": 100,
+  "Duration": 2.1,
+  "HitAngleModifierStrength": 1,
+  "FontSize": 64,
+  "TextColor": "#B90F15",
+  "AnimationEvents": [
+    { "Type": "Scale", "StartAt": 0, "EndAt": 0.2, "StartScale": 1.0, "EndScale": 0.5 },
+    { "Type": "Position", "StartAt": 0.05, "EndAt": 1, "PositionOffset": { "X": 0, "Y": -120 } },
+    { "Type": "Opacity", "StartAt": 0.6, "EndAt": 1, "StartOpacity": 1, "EndOpacity": 0 }
+  ]
+}

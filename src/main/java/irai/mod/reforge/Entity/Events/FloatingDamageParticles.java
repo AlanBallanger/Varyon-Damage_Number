@@ -18,7 +18,8 @@ public final class FloatingDamageParticles {
 
     private static final double HEIGHT_ABOVE_ENTITY = 1.85;
     private static final double DIGIT_SPACING = 0.08;
-    private static final double ICON_WIDTH = 0.34;
+    private static final double ICON_SLOT_WIDTH = 0.12;
+    private static final double ICON_NUDGE_TOWARD_DIGITS = 0.09;
 
     private FloatingDamageParticles() {}
 
@@ -66,17 +67,17 @@ public final class FloatingDamageParticles {
         }
 
         int iconSlots = iconSystem != null ? 1 : 0;
-        double totalWidth = iconSlots * ICON_WIDTH + digits.length() * DIGIT_SPACING;
+        double totalWidth = iconSlots * ICON_SLOT_WIDTH + digits.length() * DIGIT_SPACING;
         double cursor = -totalWidth / 2.0;
 
         var accessor = commandBuffer != null ? commandBuffer : store;
         try {
             if (iconSystem != null) {
-                double along = cursor + ICON_WIDTH / 2.0;
+                double along = cursor + ICON_SLOT_WIDTH / 2.0 + ICON_NUDGE_TOWARD_DIGITS;
                 double px = base.x + rightX * along;
                 double pz = base.z + rightZ * along;
                 ParticleUtil.spawnParticleEffect(iconSystem, new Vector3d(px, y, pz), accessor);
-                cursor += ICON_WIDTH;
+                cursor += ICON_SLOT_WIDTH;
             }
             for (int i = 0; i < digits.length(); i++) {
                 char c = digits.charAt(i);

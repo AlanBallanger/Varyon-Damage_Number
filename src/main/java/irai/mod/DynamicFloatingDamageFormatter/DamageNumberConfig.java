@@ -52,7 +52,7 @@ public class DamageNumberConfig {
             "SHOCK|label=|format={amount}|color=#FFFF55|ui=SocketReforge_CombatText_Shock|particleFont=FloatingDamage_SHOCK|particleIcon=FloatingDamage_Icon_Shock",
             "WATER|label=|format={amount}|color=#5555FF|ui=SocketReforge_CombatText_Water|particleFont=FloatingDamage_WATER",
             "VOID|label=|format={amount}|color=#8000FF|ui=SocketReforge_CombatText_Void|particleFont=FloatingDamage_VOID|particleIcon=FloatingDamage_Icon_Void",
-            "HEAL|label=|format={amount}|color=#55FF55|ui=SocketReforge_CombatText_Heal|particleFont=FloatingDamage_HEAL"
+            "HEAL|label=|format={amount}|color=#55FF55|ui=SocketReforge_CombatText_Heal|particleFont=FloatingDamage_HEAL|particleIcon=FloatingDamage_Icon_Heal"
     };
 
     // Format: "alias=KIND"

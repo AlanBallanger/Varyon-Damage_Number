@@ -40,7 +40,7 @@
                               "BlockType":  "None"
                           },
     "Particle":  {
-                     "Texture":  "Particles/Textures/CombatText/frost.png",
+                     "Texture":  "Particles/Textures/CombatText/heal.png",
                      "FrameSize":  {
                                        "Width":  256,
                                        "Height":  256

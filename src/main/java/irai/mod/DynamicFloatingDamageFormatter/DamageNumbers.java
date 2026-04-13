@@ -257,6 +257,12 @@ public final class DamageNumbers {
         return format(amount, style, fmtStyle, includeLabel);
     }
 
+    public static String formatCombatTextLine(double amount, String kindId) {
+        KindStyle style = getKindStyle(kindId);
+        boolean includeLabel = style.labelByDefault() != null ? style.labelByDefault() : defaults.labelByDefault();
+        return format(amount, style, FormatStyle.PLAIN, includeLabel);
+    }
+
     public static String formatAmountOnly(double amount, String kindId) {
         KindStyle style = getKindStyle(kindId);
         return formatAmount(amount, style);

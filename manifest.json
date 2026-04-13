@@ -1,18 +1,16 @@
 {
-  "Group": "com.jzifmods",
-  "Name": "DoTAndHealingNumbers",
-  "Version": "0.3.1",
-  "Description": "Displays DOT damage numbers, damage-type colored combat text, and healing numbers above entities.",
-  "Main": "com.jzifmods.dotandhealingnumbers.DoTAndHealingNumbersPlugin",
+  "Group": "Varyon",
+  "Name": "Varyon-Damage-Number",
+  "Version": "1.0.0",
+  "Description": "Fork DFF: floating damage numbers (DamageNumberEST + assets).",
+  "Main": "fr.varyon.damagenumber.VaryonDamageNumberPlugin",
   "Authors": [
     {
-      "Name": "Jzifs Mods",
-      "Email": "",
+      "Name": "Varyon",
       "Url": ""
     }
   ],
   "Website": "",
-  "ServerVersion": "2026.02.19-1a311a592",
   "Dependencies": {},
   "OptionalDependencies": {},
   "LoadBefore": {},

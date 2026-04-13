@@ -1,25 +1,45 @@
-{
-    "Type":  "CombatText",
-    "HitboxOffset":  {
-                         "X":  0.0,
-                         "Y":  0.0
-                     },
-        "RandomPositionOffsetRange":  {
-                                      "X":  {
-                                                "Min":  0,
-                                                "Max":  0
-                                            },
-                                      "Y":  {
-                                                "Min":  0,
-                                                "Max":  0
-                                            }
-                                  },
-    "ViewportMargin":  0.0,
-    "Duration":  0.8,
-    "HitAngleModifierStrength":  0.0,
-    "FontSize":  36.0,
-    "TextColor":  "#FFFFFF",
-    "AnimationEvents":  [
-
-                        ]
+﻿{
+    "Type": "CombatText",
+    "HitboxOffset": {
+        "X": 0.0,
+        "Y": 1.0
+    },
+    "RandomPositionOffsetRange": {
+        "X": { "Min": 0, "Max": 0 },
+        "Y": { "Min": 0, "Max": 0 }
+    },
+    "ViewportMargin": 0.0,
+    "Duration": 0.8,
+    "HitAngleModifierStrength": 0.0,
+    "FontSize": 64.0,
+    "TextColor": "#FFFFFF",
+    "AnimationEvents": [
+        {
+            "Type": "Position",
+            "StartAt": 0.0,
+            "EndAt": 1.0,
+            "PositionOffset": { "X": 0.0, "Y": -0.45 }
+        },
+        {
+            "Type": "Scale",
+            "StartAt": 0.0,
+            "EndAt": 0.15,
+            "StartScale": 0.88,
+            "EndScale": 1.0
+        },
+        {
+            "Type": "Scale",
+            "StartAt": 0.15,
+            "EndAt": 1.0,
+            "StartScale": 1.0,
+            "EndScale": 0.88
+        },
+        {
+            "Type": "Opacity",
+            "StartAt": 0.25,
+            "EndAt": 1.0,
+            "StartOpacity": 1.0,
+            "EndOpacity": 0.0
+        }
+    ]
 }

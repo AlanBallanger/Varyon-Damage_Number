@@ -1,4 +1,4 @@
-package irai.mod.DynamicFloatingDamageFormatter;
+package fr.varyon.damagenumber;
 
 import javax.annotation.Nonnull;
 
@@ -6,14 +6,13 @@ import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.util.Config;
 
-/**
- * Standalone plugin entrypoint. Loads the formatter config and
- * tries to register a damage adapter system if one is present.
- */
-public class DynamicFloatingDamageFormatterPlugin extends JavaPlugin {
+import irai.mod.DynamicFloatingDamageFormatter.DamageNumberConfig;
+import irai.mod.DynamicFloatingDamageFormatter.DamageNumbers;
+
+public final class VaryonDamageNumberPlugin extends JavaPlugin {
     private final Config<DamageNumberConfig> damageNumberConfig;
 
-    public DynamicFloatingDamageFormatterPlugin(@Nonnull JavaPluginInit init) {
+    public VaryonDamageNumberPlugin(@Nonnull JavaPluginInit init) {
         super(init);
         this.damageNumberConfig = this.withConfig("DamageNumberConfig", DamageNumberConfig.CODEC);
     }
@@ -23,8 +22,9 @@ public class DynamicFloatingDamageFormatterPlugin extends JavaPlugin {
         try {
             damageNumberConfig.save().join();
             DamageNumbers.applyConfig(damageNumberConfig.get());
+            System.out.println("[VaryonDamageNumber] DamageNumberConfig appliquée (emplacement = données du plugin selon manifest Group/Name).");
         } catch (Throwable t) {
-            System.err.println("[DynamicFloatingDamageFormatter] Failed to load DamageNumberConfig: " + t.getMessage());
+            System.err.println("[VaryonDamageNumber] Échec chargement DamageNumberConfig: " + t.getMessage());
             t.printStackTrace();
         }
 
@@ -44,16 +44,15 @@ public class DynamicFloatingDamageFormatterPlugin extends JavaPlugin {
                 }
             }
             if (register == null) {
-                System.out.println("[DynamicFloatingDamageFormatter] registerSystem(...) not found; skipping adapter.");
+                System.out.println("[VaryonDamageNumber] registerSystem(...) introuvable.");
                 return;
             }
             register.invoke(registry, system);
-            System.out.println("[DynamicFloatingDamageFormatter] Registered damage system: " + className);
+            System.out.println("[VaryonDamageNumber] Système enregistré: " + className);
         } catch (ClassNotFoundException e) {
-            System.out.println("[DynamicFloatingDamageFormatter] No adapter system found (" + className + ")." +
-                    " Use manual emit or include an adapter system.");
+            System.out.println("[VaryonDamageNumber] Adapter absent (" + className + ").");
         } catch (Throwable t) {
-            System.err.println("[DynamicFloatingDamageFormatter] Failed to register damage system: " + t.getMessage());
+            System.err.println("[VaryonDamageNumber] Échec enregistrement: " + t.getMessage());
             t.printStackTrace();
         }
     }

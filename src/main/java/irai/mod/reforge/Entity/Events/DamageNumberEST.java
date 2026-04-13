@@ -139,7 +139,7 @@ public class DamageNumberEST extends DamageEventSystem {
 
         String kindId = DamageNumbers.resolveKindId(damage);
         float angle = resolveAngle(kindId);
-        String text = DamageNumbers.format(damage.getAmount(), kindId);
+        String text = DamageNumbers.formatCombatTextLine(damage.getAmount(), kindId);
         CombatTextUpdate update = new CombatTextUpdate(angle, text);
 
         for (EntityViewer viewer : viewers) {
@@ -191,7 +191,7 @@ public class DamageNumberEST extends DamageEventSystem {
         }
         String resolvedKind = (kindId == null || kindId.isBlank()) ? "FLAT" : kindId;
         float angle = resolveAngle(resolvedKind);
-        String text = DamageNumbers.format(amount, resolvedKind);
+        String text = DamageNumbers.formatCombatTextLine(amount, resolvedKind);
         CombatTextUpdate update = new CombatTextUpdate(angle, text);
 
         for (EntityViewer viewer : viewers) {

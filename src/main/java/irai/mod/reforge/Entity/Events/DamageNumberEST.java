@@ -1,7 +1,10 @@
 package irai.mod.reforge.Entity.Events;
 
+import javax.annotation.Nullable;
+
 import java.util.Arrays;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.hypixel.hytale.assetstore.map.IndexedLookupTableAssetMap;
@@ -10,6 +13,7 @@ import com.hypixel.hytale.component.CommandBuffer;
 import com.hypixel.hytale.component.ComponentType;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.math.vector.Vector3d;
 import com.hypixel.hytale.component.SystemGroup;
 import com.hypixel.hytale.component.dependency.Dependency;
 import com.hypixel.hytale.component.dependency.Order;
@@ -19,6 +23,7 @@ import com.hypixel.hytale.protocol.CombatTextUpdate;
 import com.hypixel.hytale.protocol.EntityUIType;
 import com.hypixel.hytale.protocol.UIComponentsUpdate;
 import com.hypixel.hytale.server.core.modules.entity.EntityModule;
+import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
 import com.hypixel.hytale.server.core.modules.entity.damage.Damage;
 import com.hypixel.hytale.server.core.modules.entity.damage.DamageEventSystem;
 import com.hypixel.hytale.server.core.modules.entity.damage.DamageModule;
@@ -35,11 +40,11 @@ import irai.mod.DynamicFloatingDamageFormatter.DamageNumbers;
 
 /**
  * Minimal adapter system for standalone usage.
- * Emits combat text using the formatter config (no particle rendering).
- * Runs BEFORE DamageSystems.EntityUIEvents and zeroes damage.amount after
- * emitting so vanilla combat text is suppressed.
+ * When a kind defines {@code particleFont} in config, spawns FloatingDamage particle digits (per-kind colour).
+ * Otherwise uses CombatText + UI swap. Runs BEFORE {@link DamageSystems.EntityUIEvents}.
  */
 public class DamageNumberEST extends DamageEventSystem {
+    private static final float NON_DOT_RANDOM_JITTER_DEGREES = 240f;
 
     public static final AtomicInteger DBG_HANDLE_CALLS   = new AtomicInteger();
     public static final AtomicInteger DBG_SKIP_AMOUNT0   = new AtomicInteger();
@@ -138,8 +143,16 @@ public class DamageNumberEST extends DamageEventSystem {
         }
 
         String kindId = DamageNumbers.resolveKindId(damage);
+        Vector3d viewerPos = firstViewerPosition(visible, store, commandBuffer);
+        if (FloatingDamageParticles.trySpawn(store, commandBuffer, targetRef, damage.getAmount(), kindId, viewerPos)) {
+            DBG_EMITTED.incrementAndGet();
+            damage.setAmount(0f);
+            DBG_ZEROED.incrementAndGet();
+            return;
+        }
+
         float angle = resolveAngle(kindId);
-        String text = DamageNumbers.formatCombatTextLine(damage.getAmount(), kindId);
+        String text = DamageNumbers.format(damage.getAmount(), kindId);
         CombatTextUpdate update = new CombatTextUpdate(angle, text);
 
         for (EntityViewer viewer : viewers) {
@@ -151,8 +164,8 @@ public class DamageNumberEST extends DamageEventSystem {
         }
 
         DBG_EMITTED.incrementAndGet();
-        DBG_ZEROED.incrementAndGet();
         damage.setAmount(0f);
+        DBG_ZEROED.incrementAndGet();
     }
 
     public static void queueCombatTextDirect(Store<EntityStore> store,
@@ -190,8 +203,13 @@ public class DamageNumberEST extends DamageEventSystem {
             return;
         }
         String resolvedKind = (kindId == null || kindId.isBlank()) ? "FLAT" : kindId;
+        Vector3d viewerPos = firstViewerPosition(visible, store, null);
+        if (FloatingDamageParticles.trySpawn(store, null, targetRef, amount, resolvedKind, viewerPos)) {
+            return;
+        }
+
         float angle = resolveAngle(resolvedKind);
-        String text = DamageNumbers.formatCombatTextLine(amount, resolvedKind);
+        String text = DamageNumbers.format(amount, resolvedKind);
         CombatTextUpdate update = new CombatTextUpdate(angle, text);
 
         for (EntityViewer viewer : viewers) {
@@ -212,7 +230,23 @@ public class DamageNumberEST extends DamageEventSystem {
     }
 
     private static float resolveAngle(String kindId) {
-        return 0f;
+        float angle;
+        if (DamageNumbers.isDotKind(kindId)) {
+            angle = (ThreadLocalRandom.current().nextFloat() * 360f) - 180f;
+        } else {
+            angle = (ThreadLocalRandom.current().nextFloat() - 0.5f) * NON_DOT_RANDOM_JITTER_DEGREES;
+        }
+        return normalizeAngle(angle);
+    }
+
+    private static float normalizeAngle(float angle) {
+        if (angle > 180f) {
+            return angle - 360f;
+        }
+        if (angle < -180f) {
+            return angle + 360f;
+        }
+        return angle;
     }
 
     private static void queueCombatTextComponentSwap(EntityViewer viewer,
@@ -302,6 +336,38 @@ public class DamageNumberEST extends DamageEventSystem {
             return Arrays.copyOf(baseComponentIds, baseComponentIds.length);
         }
         return count == filtered.length ? filtered : Arrays.copyOf(filtered, count);
+    }
+
+    private static Vector3d firstViewerPosition(Visible visible,
+                                                Store<EntityStore> store,
+                                                @Nullable CommandBuffer<EntityStore> commandBuffer) {
+        Ref<EntityStore> viewerRef = firstViewerRef(visible);
+        if (viewerRef == null || !viewerRef.isValid()) {
+            return null;
+        }
+        ComponentType<EntityStore, TransformComponent> transformType = TransformComponent.getComponentType();
+        TransformComponent t = commandBuffer != null ? commandBuffer.getComponent(viewerRef, transformType) : null;
+        if (t == null) {
+            t = store.getComponent(viewerRef, transformType);
+        }
+        return t == null ? null : t.getPosition();
+    }
+
+    private static Ref<EntityStore> firstViewerRef(Visible visible) {
+        if (visible == null) {
+            return null;
+        }
+        java.util.Map<Ref<EntityStore>, EntityViewer> m = visible.visibleTo;
+        if (m == null || m.isEmpty()) {
+            m = visible.newlyVisibleTo;
+        }
+        if (m == null || m.isEmpty()) {
+            m = visible.previousVisibleTo;
+        }
+        if (m == null || m.isEmpty()) {
+            return null;
+        }
+        return m.keySet().iterator().next();
     }
 
     private static EntityViewer[] resolveViewers(Visible visible) {

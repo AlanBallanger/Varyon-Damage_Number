@@ -18,6 +18,7 @@ import com.hypixel.hytale.component.SystemGroup;
 import com.hypixel.hytale.component.dependency.Dependency;
 import com.hypixel.hytale.component.dependency.Order;
 import com.hypixel.hytale.component.dependency.SystemDependency;
+import com.hypixel.hytale.component.dependency.SystemGroupDependency;
 import com.hypixel.hytale.component.query.Query;
 import com.hypixel.hytale.protocol.CombatTextUpdate;
 import com.hypixel.hytale.protocol.EntityUIType;
@@ -81,7 +82,20 @@ public class DamageNumberEST extends DamageEventSystem {
         this.visibleComponentType = visibleType;
         this.uiComponentListComponentType = uiType;
         this.query = (visibleType != null && uiType != null) ? Query.and(visibleType, uiType) : Query.any();
-        this.dependencies = Set.of(new SystemDependency<>(Order.BEFORE, DamageSystems.EntityUIEvents.class));
+        this.dependencies = buildDependencies();
+    }
+
+    private static Set<Dependency<EntityStore>> buildDependencies() {
+        try {
+            DamageModule dm = DamageModule.get();
+            if (dm != null) {
+                return Set.of(
+                        new SystemGroupDependency<>(Order.AFTER, dm.getFilterDamageGroup()),
+                        new SystemDependency<>(Order.BEFORE, DamageSystems.EntityUIEvents.class));
+            }
+        } catch (Throwable ignored) {
+        }
+        return Set.of(new SystemDependency<>(Order.BEFORE, DamageSystems.EntityUIEvents.class));
     }
 
     @Override
@@ -144,7 +158,7 @@ public class DamageNumberEST extends DamageEventSystem {
 
         String kindId = DamageNumbers.resolveKindId(damage);
         Vector3d viewerPos = firstViewerPosition(visible, store, commandBuffer);
-        if (FloatingDamageParticles.trySpawn(store, commandBuffer, targetRef, damage.getAmount(), kindId, viewerPos)) {
+        if (FloatingDamageParticles.trySpawn(store, commandBuffer, targetRef, damage.getAmount(), kindId, viewerPos, damage)) {
             DBG_EMITTED.incrementAndGet();
             damage.setAmount(0f);
             DBG_ZEROED.incrementAndGet();
@@ -172,6 +186,14 @@ public class DamageNumberEST extends DamageEventSystem {
                                              Ref<EntityStore> targetRef,
                                              float amount,
                                              String kindId) {
+        queueCombatTextDirect(store, null, targetRef, amount, kindId);
+    }
+
+    public static void queueCombatTextDirect(Store<EntityStore> store,
+                                             @Nullable CommandBuffer<EntityStore> commandBuffer,
+                                             Ref<EntityStore> targetRef,
+                                             float amount,
+                                             String kindId) {
         if (store == null || targetRef == null || amount <= 0f) {
             return;
         }
@@ -192,8 +214,18 @@ public class DamageNumberEST extends DamageEventSystem {
         if (visibleType == null || uiType == null) {
             return;
         }
-        Visible visible = store.getComponent(targetRef, visibleType);
-        UIComponentList uiList = store.getComponent(targetRef, uiType);
+        Visible visible = commandBuffer != null
+                ? (Visible) commandBuffer.getComponent(targetRef, visibleType)
+                : store.getComponent(targetRef, visibleType);
+        if (visible == null) {
+            visible = store.getComponent(targetRef, visibleType);
+        }
+        UIComponentList uiList = commandBuffer != null
+                ? (UIComponentList) commandBuffer.getComponent(targetRef, uiType)
+                : store.getComponent(targetRef, uiType);
+        if (uiList == null) {
+            uiList = store.getComponent(targetRef, uiType);
+        }
         if (visible == null || uiList == null) {
             return;
         }
@@ -203,8 +235,8 @@ public class DamageNumberEST extends DamageEventSystem {
             return;
         }
         String resolvedKind = (kindId == null || kindId.isBlank()) ? "FLAT" : kindId;
-        Vector3d viewerPos = firstViewerPosition(visible, store, null);
-        if (FloatingDamageParticles.trySpawn(store, null, targetRef, amount, resolvedKind, viewerPos)) {
+        Vector3d viewerPos = firstViewerPosition(visible, store, commandBuffer);
+        if (FloatingDamageParticles.trySpawn(store, commandBuffer, targetRef, amount, resolvedKind, viewerPos, null)) {
             return;
         }
 

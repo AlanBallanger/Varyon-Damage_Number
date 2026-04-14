@@ -76,11 +76,8 @@
                                                                             "Max":  0
                                                                         }
                                                               },
-                                                 "Opacity":  1,
-                                                 "Color":  "#ffffff"
-                                             },
+                                                 "Opacity":  1},
                                        "50":  {
-                                                  "Color":  "#ffffff",
                                                   "Opacity":  1,
                                                   "Scale":  {
                                                                 "X":  {
@@ -104,9 +101,7 @@
                                                                            "Max":  1
                                                                        }
                                                              },
-                                                   "Opacity":  0,
-                                                   "Color":  "#ffffff"
-                                               }
+                                                   "Opacity":  0}
                                    },
                      "InitialAnimationFrame":  {
                                                    "Rotation":  {

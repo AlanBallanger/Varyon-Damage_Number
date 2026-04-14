@@ -10,6 +10,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.hypixel.hytale.component.CommandBuffer;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.server.core.modules.entity.damage.Damage;
@@ -95,7 +96,15 @@ public final class DamageNumbers {
                             Ref<EntityStore> targetRef,
                             float amount,
                             String kindId) {
-        DamageNumberEST.queueCombatTextDirect(store, targetRef, amount, kindId);
+        DamageNumberEST.queueCombatTextDirect(store, null, targetRef, amount, kindId);
+    }
+
+    public static void emit(Store<EntityStore> store,
+                            CommandBuffer<EntityStore> commandBuffer,
+                            Ref<EntityStore> targetRef,
+                            float amount,
+                            String kindId) {
+        DamageNumberEST.queueCombatTextDirect(store, commandBuffer, targetRef, amount, kindId);
     }
 
     public static void emit(Store<EntityStore> store,
@@ -182,6 +191,7 @@ public final class DamageNumbers {
                 null, null, null, null, false, Boolean.FALSE, null, null, null, null));
 
         if (config == null) {
+            ensureCriticalKindStyle();
             return;
         }
         for (String entry : safeArray(config.getKindEntries())) {
@@ -193,6 +203,32 @@ public final class DamageNumbers {
         for (String entry : safeArray(config.getAliasEntries())) {
             parseAliasEntry(entry);
         }
+        ensureCriticalKindStyle();
+    }
+
+    private static void ensureCriticalKindStyle() {
+        KindStyle cur = KINDS.get("CRITICAL");
+        if (cur != null && !particleFontIsBrokenForCritical(cur)) {
+            return;
+        }
+        KindStyle fallback = parseKindEntry(
+                "CRITICAL|label=|format={amount}|color=#FFFFFF|ui=SocketReforge_CombatText_Critical|"
+                        + "particleFont=FloatingDamage_CRITICAL|particleIcon=FloatingDamage_Icon_Critical");
+        if (fallback != null) {
+            registerKind(fallback);
+        }
+    }
+
+    private static boolean particleFontIsBrokenForCritical(KindStyle s) {
+        String pf = s.particleFontId();
+        if (pf == null || pf.trim().isEmpty()) {
+            return true;
+        }
+        String t = pf.trim();
+        if (t.contains("FloatingDamage_FLAT")) {
+            return true;
+        }
+        return !t.contains("CRITICAL");
     }
 
     public static void registerKind(KindStyle style) {
@@ -217,7 +253,11 @@ public final class DamageNumbers {
         if (kindId == null || kindId.isBlank()) {
             return KINDS.get(KIND_FLAT);
         }
-        KindStyle style = KINDS.get(normalizeKindId(kindId));
+        String norm = normalizeKindId(kindId);
+        if ("CRITICAL".equals(norm)) {
+            ensureCriticalKindStyle();
+        }
+        KindStyle style = KINDS.get(norm);
         return style != null ? style : KINDS.get(KIND_FLAT);
     }
 
@@ -230,7 +270,16 @@ public final class DamageNumbers {
         }
         String explicit = DamageNumberMeta.readKindId(damage);
         if (explicit != null && !explicit.isBlank()) {
-            return normalizeKindId(explicit);
+            String e = normalizeKindId(explicit);
+            if (!KIND_FLAT.equals(e)) {
+                return e;
+            }
+        }
+        if (DamageNumberMeta.inferCriticalFromImpactVfx(damage)) {
+            return "CRITICAL";
+        }
+        if (DamageNumberMeta.inferCriticalFromMetaStringScan(damage)) {
+            return "CRITICAL";
         }
         DamageCause cause = damage.getCause();
         if (cause == null || cause.getId() == null) {

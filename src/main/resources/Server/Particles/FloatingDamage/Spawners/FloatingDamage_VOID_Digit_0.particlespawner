@@ -1,5 +1,5 @@
 {
-    "RenderMode":  "BlendAdd",
+    "RenderMode":  "BlendLinear",
     "EmitOffset":  {
 
                    },
@@ -40,10 +40,10 @@
                               "BlockType":  "None"
                           },
     "Particle":  {
-                     "Texture":  "Particles/FloatingDamage/Digits.png",
+                     "Texture":  "Particles/FloatingDamage/Digits_Void.png",
                      "FrameSize":  {
-                                       "Width":  128,
-                                       "Height":  128
+                                       "Width":  64,
+                                       "Height":  64
                                    },
                      "ScaleRatioConstraint":  "OneToOne",
                      "Animation":  {
@@ -76,11 +76,8 @@
                                                                             "Max":  0
                                                                         }
                                                               },
-                                                 "Opacity":  1,
-                                                 "Color":  "#8000FF"
-                                             },
+                                                 "Opacity":  1},
                                        "50":  {
-                                                  "Color":  "#8000FF",
                                                   "Opacity":  1,
                                                   "Scale":  {
                                                                 "X":  {
@@ -104,9 +101,7 @@
                                                                            "Max":  1
                                                                        }
                                                              },
-                                                   "Opacity":  0,
-                                                   "Color":  "#8000FF"
-                                               }
+                                                   "Opacity":  0}
                                    },
                      "InitialAnimationFrame":  {
                                                    "Rotation":  {

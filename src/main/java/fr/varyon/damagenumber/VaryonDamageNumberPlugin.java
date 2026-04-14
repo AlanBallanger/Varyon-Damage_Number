@@ -4,25 +4,21 @@ import javax.annotation.Nonnull;
 
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
-import com.hypixel.hytale.server.core.util.Config;
 
 import irai.mod.DynamicFloatingDamageFormatter.DamageNumberConfig;
 import irai.mod.DynamicFloatingDamageFormatter.DamageNumbers;
 
 public final class VaryonDamageNumberPlugin extends JavaPlugin {
-    private final Config<DamageNumberConfig> damageNumberConfig;
 
     public VaryonDamageNumberPlugin(@Nonnull JavaPluginInit init) {
         super(init);
-        this.damageNumberConfig = this.withConfig("DamageNumberConfig", DamageNumberConfig.CODEC);
     }
 
     @Override
     protected void setup() {
         try {
-            damageNumberConfig.save().join();
-            DamageNumbers.applyConfig(damageNumberConfig.get());
-            System.out.println("[VaryonDamageNumber] DamageNumberConfig appliquée (emplacement = données du plugin selon manifest Group/Name).");
+            DamageNumbers.applyConfig(new DamageNumberConfig());
+            System.out.println("[VaryonDamageNumber] DamageNumberConfig appliquée depuis les defaults intégrés.");
         } catch (Throwable t) {
             System.err.println("[VaryonDamageNumber] Échec chargement DamageNumberConfig: " + t.getMessage());
             t.printStackTrace();

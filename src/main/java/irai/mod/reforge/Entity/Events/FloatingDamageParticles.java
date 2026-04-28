@@ -33,6 +33,9 @@ public final class FloatingDamageParticles {
     /** Scale nudge down for 1–2 digit amounts so the burst sits less into the first digit. */
     private static final double ICON_NUDGE_SHORT_NUMBER_SCALE = 0.28;
     private static final double HORIZONTAL_GROUP_JITTER = 0.26;
+    private static final double DISTANCE_SCALE_REFERENCE = 6.0;
+    private static final float DISTANCE_SCALE_MIN = 1.0f;
+    private static final float DISTANCE_SCALE_MAX = 3.5f;
 
     private FloatingDamageParticles() {}
 
@@ -81,7 +84,6 @@ public final class FloatingDamageParticles {
         int iconSlots = iconSystem != null ? 1 : 0;
         double iconToDigitGap = iconSlots > 0 ? iconToDigitGapAfterIcon(digitCount) : 0.0;
         double iconNudge = iconSlots > 0 ? iconNudgeTowardDigits() : 0.0;
-        double totalWidth = iconSlots * ICON_SLOT_WIDTH + iconToDigitGap + digitCount * DIGIT_SPACING;
         ThreadLocalRandom rng = ThreadLocalRandom.current();
         double groupAlong = rng.nextDouble(-HORIZONTAL_GROUP_JITTER, HORIZONTAL_GROUP_JITTER);
 
@@ -103,9 +105,12 @@ public final class FloatingDamageParticles {
                     continue;
                 }
                 double[] right = new double[2];
-                resolveHorizontalRight(base, vt.getPosition(), transform, right);
-                if (!spawnDigitBurst(iconSystem, font, digits, base, y, iconToDigitGap, iconNudge,
-                        totalWidth, groupAlong, accessor, List.of(viewerRef), right[0], right[1])) {
+                Vector3d vpos = vt.getPosition();
+                resolveHorizontalRight(base, vpos, transform, right);
+                float distScale = distanceDisplayScale(vpos.getX(), vpos.getY(), vpos.getZ(), base.x, y, base.z);
+                if (!spawnDigitBurst(iconSystem, font, digits, base, y, digitCount,
+                        iconSlots, iconToDigitGap, iconNudge,
+                        groupAlong, accessor, List.of(viewerRef), right[0], right[1], distScale)) {
                     return false;
                 }
                 spawnedFor++;
@@ -129,27 +134,56 @@ public final class FloatingDamageParticles {
         return out;
     }
 
+    private static float distanceDisplayScale(double vx, double vy, double vz, double tx, double ty, double tz) {
+        double dx = tx - vx;
+        double dy = ty - vy;
+        double dz = tz - vz;
+        double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist < 0.25) {
+            dist = 0.25;
+        }
+        double s = dist / DISTANCE_SCALE_REFERENCE;
+        if (s < DISTANCE_SCALE_MIN) {
+            s = DISTANCE_SCALE_MIN;
+        }
+        if (s > DISTANCE_SCALE_MAX) {
+            s = DISTANCE_SCALE_MAX;
+        }
+        return (float) s;
+    }
+
     private static boolean spawnDigitBurst(@Nullable String iconSystem,
                                            String digitFont,
                                            String digits,
                                            Vector3d base,
                                            double y,
+                                           int digitCount,
+                                           int iconSlots,
                                            double iconToDigitGap,
                                            double iconNudge,
-                                           double totalWidth,
                                            double groupAlong,
                                            ComponentAccessor<EntityStore> accessor,
                                            List<Ref<EntityStore>> playerRefs,
                                            double rightX,
-                                           double rightZ) {
+                                           double rightZ,
+                                           float particleScale) {
+        double layout = particleScale <= 1e-4f ? 1.0 : particleScale;
+        double iconSlotW = ICON_SLOT_WIDTH * layout;
+        double digitSpacing = DIGIT_SPACING * layout;
+        double gapAfterIcon = iconToDigitGap * layout;
+        double iconNudgeScaled = iconNudge * layout;
+        double groupJitterScaled = groupAlong * layout;
+
+        double totalWidth = iconSlots * iconSlotW + gapAfterIcon + digitCount * digitSpacing;
+
         double cursor = -totalWidth / 2.0;
         try {
             if (iconSystem != null) {
-                double along = cursor + ICON_SLOT_WIDTH / 2.0 + iconNudge + groupAlong;
+                double along = cursor + iconSlotW / 2.0 + iconNudgeScaled + groupJitterScaled;
                 double px = base.x + rightX * along;
                 double pz = base.z + rightZ * along;
-                ParticleUtil.spawnParticleEffect(iconSystem, new Vector3d(px, y, pz), playerRefs, accessor);
-                cursor += ICON_SLOT_WIDTH + iconToDigitGap;
+                spawnParticleScaled(iconSystem, px, y, pz, particleScale, playerRefs, accessor);
+                cursor += iconSlotW + gapAfterIcon;
             }
             for (int i = 0; i < digits.length(); i++) {
                 char c = digits.charAt(i);
@@ -157,16 +191,27 @@ public final class FloatingDamageParticles {
                     continue;
                 }
                 String systemName = digitFont + "_Digit_" + c;
-                double along = cursor + DIGIT_SPACING / 2.0 + groupAlong;
+                double along = cursor + digitSpacing / 2.0 + groupJitterScaled;
                 double px = base.x + rightX * along;
                 double pz = base.z + rightZ * along;
-                ParticleUtil.spawnParticleEffect(systemName, new Vector3d(px, y, pz), playerRefs, accessor);
-                cursor += DIGIT_SPACING;
+                spawnParticleScaled(systemName, px, y, pz, particleScale, playerRefs, accessor);
+                cursor += digitSpacing;
             }
         } catch (Throwable t) {
             return false;
         }
         return true;
+    }
+
+    private static void spawnParticleScaled(String systemName,
+                                            double px,
+                                            double py,
+                                            double pz,
+                                            float scale,
+                                            List<Ref<EntityStore>> playerRefs,
+                                            ComponentAccessor<EntityStore> accessor) {
+        ParticleUtil.spawnParticleEffect(systemName, px, py, pz, 0f, 0f, 0f, scale, null, null,
+                playerRefs, accessor);
     }
 
     private static final String FONT_FLAT = "FloatingDamage_FLAT";

@@ -1,11 +1,14 @@
 package irai.mod.reforge.Entity.Events;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.annotation.Nullable;
 
 import com.hypixel.hytale.component.CommandBuffer;
+import com.hypixel.hytale.component.ComponentAccessor;
 import com.hypixel.hytale.component.ComponentType;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
@@ -38,7 +41,7 @@ public final class FloatingDamageParticles {
                                    Ref<EntityStore> targetRef,
                                    float amount,
                                    @Nullable String kindId,
-                                   @Nullable Vector3d viewerPosition,
+                                   @Nullable List<Ref<EntityStore>> viewerRefs,
                                    @Nullable Damage damage) {
         String resolved;
         if (damage != null) {
@@ -74,32 +77,78 @@ public final class FloatingDamageParticles {
         Vector3d base = transform.getPosition();
         double y = base.y + HEIGHT_ABOVE_ENTITY;
 
-        double rightX;
-        double rightZ;
-        {
-            double[] r = new double[2];
-            resolveHorizontalRight(base, viewerPosition, transform, r);
-            rightX = r[0];
-            rightZ = r[1];
-        }
-
         int digitCount = digits.length();
         int iconSlots = iconSystem != null ? 1 : 0;
         double iconToDigitGap = iconSlots > 0 ? iconToDigitGapAfterIcon(digitCount) : 0.0;
         double iconNudge = iconSlots > 0 ? iconNudgeTowardDigits() : 0.0;
         double totalWidth = iconSlots * ICON_SLOT_WIDTH + iconToDigitGap + digitCount * DIGIT_SPACING;
-        double cursor = -totalWidth / 2.0;
-
         ThreadLocalRandom rng = ThreadLocalRandom.current();
         double groupAlong = rng.nextDouble(-HORIZONTAL_GROUP_JITTER, HORIZONTAL_GROUP_JITTER);
 
         var accessor = commandBuffer != null ? commandBuffer : store;
+        List<Ref<EntityStore>> receivers = sanitizedViewerRefs(viewerRefs);
+        if (receivers.isEmpty()) {
+            return false;
+        }
+
+        int spawnedFor = 0;
+        try {
+            for (Ref<EntityStore> viewerRef : receivers) {
+                TransformComponent vt = commandBuffer != null
+                        ? commandBuffer.getComponent(viewerRef, transformType) : null;
+                if (vt == null) {
+                    vt = store.getComponent(viewerRef, transformType);
+                }
+                if (vt == null) {
+                    continue;
+                }
+                double[] right = new double[2];
+                resolveHorizontalRight(base, vt.getPosition(), transform, right);
+                if (!spawnDigitBurst(iconSystem, font, digits, base, y, iconToDigitGap, iconNudge,
+                        totalWidth, groupAlong, accessor, List.of(viewerRef), right[0], right[1])) {
+                    return false;
+                }
+                spawnedFor++;
+            }
+        } catch (Throwable ignored) {
+            return false;
+        }
+        return spawnedFor > 0;
+    }
+
+    private static List<Ref<EntityStore>> sanitizedViewerRefs(@Nullable List<Ref<EntityStore>> refs) {
+        if (refs == null || refs.isEmpty()) {
+            return List.of();
+        }
+        ArrayList<Ref<EntityStore>> out = new ArrayList<>(refs.size());
+        for (Ref<EntityStore> ref : refs) {
+            if (ref != null && ref.isValid()) {
+                out.add(ref);
+            }
+        }
+        return out;
+    }
+
+    private static boolean spawnDigitBurst(@Nullable String iconSystem,
+                                           String digitFont,
+                                           String digits,
+                                           Vector3d base,
+                                           double y,
+                                           double iconToDigitGap,
+                                           double iconNudge,
+                                           double totalWidth,
+                                           double groupAlong,
+                                           ComponentAccessor<EntityStore> accessor,
+                                           List<Ref<EntityStore>> playerRefs,
+                                           double rightX,
+                                           double rightZ) {
+        double cursor = -totalWidth / 2.0;
         try {
             if (iconSystem != null) {
                 double along = cursor + ICON_SLOT_WIDTH / 2.0 + iconNudge + groupAlong;
                 double px = base.x + rightX * along;
                 double pz = base.z + rightZ * along;
-                ParticleUtil.spawnParticleEffect(iconSystem, new Vector3d(px, y, pz), accessor);
+                ParticleUtil.spawnParticleEffect(iconSystem, new Vector3d(px, y, pz), playerRefs, accessor);
                 cursor += ICON_SLOT_WIDTH + iconToDigitGap;
             }
             for (int i = 0; i < digits.length(); i++) {
@@ -107,14 +156,14 @@ public final class FloatingDamageParticles {
                 if (c < '0' || c > '9') {
                     continue;
                 }
-                String systemName = font + "_Digit_" + c;
+                String systemName = digitFont + "_Digit_" + c;
                 double along = cursor + DIGIT_SPACING / 2.0 + groupAlong;
                 double px = base.x + rightX * along;
                 double pz = base.z + rightZ * along;
-                ParticleUtil.spawnParticleEffect(systemName, new Vector3d(px, y, pz), accessor);
+                ParticleUtil.spawnParticleEffect(systemName, new Vector3d(px, y, pz), playerRefs, accessor);
                 cursor += DIGIT_SPACING;
             }
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
             return false;
         }
         return true;

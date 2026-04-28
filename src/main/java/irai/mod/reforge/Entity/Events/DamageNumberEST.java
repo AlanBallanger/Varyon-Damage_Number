@@ -2,7 +2,10 @@ package irai.mod.reforge.Entity.Events;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -13,7 +16,6 @@ import com.hypixel.hytale.component.CommandBuffer;
 import com.hypixel.hytale.component.ComponentType;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
-import com.hypixel.hytale.math.vector.Vector3d;
 import com.hypixel.hytale.component.SystemGroup;
 import com.hypixel.hytale.component.dependency.Dependency;
 import com.hypixel.hytale.component.dependency.Order;
@@ -157,8 +159,9 @@ public class DamageNumberEST extends DamageEventSystem {
         }
 
         String kindId = DamageNumbers.resolveKindId(damage);
-        Vector3d viewerPos = firstViewerPosition(visible, store, commandBuffer);
-        if (FloatingDamageParticles.trySpawn(store, commandBuffer, targetRef, damage.getAmount(), kindId, viewerPos, damage)) {
+        List<Ref<EntityStore>> viewerRefs = collectViewerRefs(visible);
+        if (FloatingDamageParticles.trySpawn(store, commandBuffer, targetRef, damage.getAmount(), kindId,
+                viewerRefs, damage)) {
             DBG_EMITTED.incrementAndGet();
             damage.setAmount(0f);
             DBG_ZEROED.incrementAndGet();
@@ -235,8 +238,8 @@ public class DamageNumberEST extends DamageEventSystem {
             return;
         }
         String resolvedKind = (kindId == null || kindId.isBlank()) ? "FLAT" : kindId;
-        Vector3d viewerPos = firstViewerPosition(visible, store, commandBuffer);
-        if (FloatingDamageParticles.trySpawn(store, commandBuffer, targetRef, amount, resolvedKind, viewerPos, null)) {
+        List<Ref<EntityStore>> viewerRefs = collectViewerRefs(visible);
+        if (FloatingDamageParticles.trySpawn(store, commandBuffer, targetRef, amount, resolvedKind, viewerRefs, null)) {
             return;
         }
 
@@ -370,36 +373,28 @@ public class DamageNumberEST extends DamageEventSystem {
         return count == filtered.length ? filtered : Arrays.copyOf(filtered, count);
     }
 
-    private static Vector3d firstViewerPosition(Visible visible,
-                                                Store<EntityStore> store,
-                                                @Nullable CommandBuffer<EntityStore> commandBuffer) {
-        Ref<EntityStore> viewerRef = firstViewerRef(visible);
-        if (viewerRef == null || !viewerRef.isValid()) {
-            return null;
+    private static List<Ref<EntityStore>> collectViewerRefs(Visible visible) {
+        if (visible == null) {
+            return List.of();
         }
-        ComponentType<EntityStore, TransformComponent> transformType = TransformComponent.getComponentType();
-        TransformComponent t = commandBuffer != null ? commandBuffer.getComponent(viewerRef, transformType) : null;
-        if (t == null) {
-            t = store.getComponent(viewerRef, transformType);
+        List<Ref<EntityStore>> refs = refsFromViewerMap(visible.visibleTo);
+        if (!refs.isEmpty()) {
+            return refs;
         }
-        return t == null ? null : t.getPosition();
+        refs = refsFromViewerMap(visible.newlyVisibleTo);
+        if (!refs.isEmpty()) {
+            return refs;
+        }
+        return refsFromViewerMap(visible.previousVisibleTo);
     }
 
-    private static Ref<EntityStore> firstViewerRef(Visible visible) {
-        if (visible == null) {
-            return null;
+    private static List<Ref<EntityStore>> refsFromViewerMap(Map<Ref<EntityStore>, EntityViewer> viewerMap) {
+        if (viewerMap == null || viewerMap.isEmpty()) {
+            return List.of();
         }
-        java.util.Map<Ref<EntityStore>, EntityViewer> m = visible.visibleTo;
-        if (m == null || m.isEmpty()) {
-            m = visible.newlyVisibleTo;
-        }
-        if (m == null || m.isEmpty()) {
-            m = visible.previousVisibleTo;
-        }
-        if (m == null || m.isEmpty()) {
-            return null;
-        }
-        return m.keySet().iterator().next();
+        List<Ref<EntityStore>> refs = new ArrayList<>(viewerMap.keySet());
+        refs.removeIf(r -> r == null || !r.isValid());
+        return refs;
     }
 
     private static EntityViewer[] resolveViewers(Visible visible) {

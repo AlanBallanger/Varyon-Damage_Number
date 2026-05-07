@@ -25,6 +25,7 @@ public final class VaryonDamageNumberPlugin extends JavaPlugin {
         }
 
         tryRegisterDamageSystem("irai.mod.reforge.Entity.Events.DamageNumberEST");
+        tryRegisterDamageSystem("irai.mod.reforge.Entity.Events.HealingFloatTickSystem");
     }
 
     private void tryRegisterDamageSystem(String className) {

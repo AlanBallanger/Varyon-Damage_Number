@@ -117,11 +117,15 @@ public final class DamageNumbers {
             return;
         }
         float amount = damage.getAmount();
-        if (amount <= 0f) {
+        if (amount == 0f) {
+            return;
+        }
+        float mag = Math.abs(amount);
+        if (mag <= 0f) {
             return;
         }
         String kindId = resolveKindId(damage);
-        DamageNumberEST.queueCombatTextDirect(store, targetRef, amount, kindId);
+        DamageNumberEST.queueCombatTextDirect(store, targetRef, mag, kindId);
     }
 
     public static void emit(Ref<EntityStore> targetRef,
@@ -264,6 +268,9 @@ public final class DamageNumbers {
     public static String resolveKindId(Damage damage) {
         if (damage == null) {
             return KIND_FLAT;
+        }
+        if (damage.getAmount() < 0f) {
+            return normalizeKindId("HEAL");
         }
         if (DamageNumberMeta.isCritical(damage)) {
             return "CRITICAL";

@@ -122,7 +122,16 @@ public class DamageNumberEST extends DamageEventSystem {
                        CommandBuffer<EntityStore> commandBuffer,
                        Damage damage) {
         DBG_HANDLE_CALLS.incrementAndGet();
-        if (damage == null || damage.getAmount() <= 0f) {
+        if (damage == null) {
+            return;
+        }
+        float rawAmount = damage.getAmount();
+        if (rawAmount == 0f) {
+            DBG_SKIP_AMOUNT0.incrementAndGet();
+            return;
+        }
+        float displayAmount = Math.abs(rawAmount);
+        if (displayAmount <= 0f) {
             DBG_SKIP_AMOUNT0.incrementAndGet();
             return;
         }
@@ -160,16 +169,19 @@ public class DamageNumberEST extends DamageEventSystem {
 
         String kindId = DamageNumbers.resolveKindId(damage);
         List<Ref<EntityStore>> viewerRefs = collectViewerRefs(visible);
-        if (FloatingDamageParticles.trySpawn(store, commandBuffer, targetRef, damage.getAmount(), kindId,
+        if (FloatingDamageParticles.trySpawn(store, commandBuffer, targetRef, displayAmount, kindId,
                 viewerRefs, damage)) {
             DBG_EMITTED.incrementAndGet();
+            if ("HEAL".equalsIgnoreCase(kindId)) {
+                HealFloatCoordinator.markFromDamageEvent(targetRef);
+            }
             damage.setAmount(0f);
             DBG_ZEROED.incrementAndGet();
             return;
         }
 
         float angle = resolveAngle(kindId);
-        String text = DamageNumbers.format(damage.getAmount(), kindId);
+        String text = DamageNumbers.format(displayAmount, kindId);
         CombatTextUpdate update = new CombatTextUpdate(angle, text);
 
         for (EntityViewer viewer : viewers) {
@@ -181,6 +193,9 @@ public class DamageNumberEST extends DamageEventSystem {
         }
 
         DBG_EMITTED.incrementAndGet();
+        if ("HEAL".equalsIgnoreCase(kindId)) {
+            HealFloatCoordinator.markFromDamageEvent(targetRef);
+        }
         damage.setAmount(0f);
         DBG_ZEROED.incrementAndGet();
     }
@@ -197,7 +212,11 @@ public class DamageNumberEST extends DamageEventSystem {
                                              Ref<EntityStore> targetRef,
                                              float amount,
                                              String kindId) {
-        if (store == null || targetRef == null || amount <= 0f) {
+        if (store == null || targetRef == null) {
+            return;
+        }
+        float displayAmount = Math.abs(amount);
+        if (displayAmount <= 0f) {
             return;
         }
         ComponentType<EntityStore, Visible> visibleType = null;
@@ -239,12 +258,15 @@ public class DamageNumberEST extends DamageEventSystem {
         }
         String resolvedKind = (kindId == null || kindId.isBlank()) ? "FLAT" : kindId;
         List<Ref<EntityStore>> viewerRefs = collectViewerRefs(visible);
-        if (FloatingDamageParticles.trySpawn(store, commandBuffer, targetRef, amount, resolvedKind, viewerRefs, null)) {
+        if (FloatingDamageParticles.trySpawn(store, commandBuffer, targetRef, displayAmount, resolvedKind, viewerRefs, null)) {
+            if ("HEAL".equalsIgnoreCase(resolvedKind)) {
+                HealFloatCoordinator.markFromDamageEvent(targetRef);
+            }
             return;
         }
 
         float angle = resolveAngle(resolvedKind);
-        String text = DamageNumbers.format(amount, resolvedKind);
+        String text = DamageNumbers.format(displayAmount, resolvedKind);
         CombatTextUpdate update = new CombatTextUpdate(angle, text);
 
         for (EntityViewer viewer : viewers) {
@@ -253,6 +275,9 @@ public class DamageNumberEST extends DamageEventSystem {
             }
             queueCombatTextComponentSwap(viewer, targetRef, uiList, resolvedKind);
             viewer.queueUpdate(targetRef, update);
+        }
+        if ("HEAL".equalsIgnoreCase(resolvedKind)) {
+            HealFloatCoordinator.markFromDamageEvent(targetRef);
         }
     }
 
